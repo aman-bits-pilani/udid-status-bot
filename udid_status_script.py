@@ -5,6 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver import ActionChains
 import requests
+import os
 
 # === CONFIGURATION ===
 MOBILE_NUMBER = os.getenv("MOBILE_NUMBER")  # Replace with your actual mobile number
