@@ -1,12 +1,13 @@
-import os
-import time
-import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver import ActionChains
+import requests
 
-# === CONFIGURATION FROM ENV ===
-MOBILE_NUMBER = os.getenv("MOBILE_NUMBER")
+# === CONFIGURATION ===
+MOBILE_NUMBER = os.getenv("MOBILE_NUMBER")  # Replace with your actual mobile number
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
@@ -19,37 +20,51 @@ def send_telegram_message(token, chat_id, message):
     }
     response = requests.post(url, data=data)
     if not response.ok:
-        print("Telegram Error:", response.text)
+        print("Telegram API Response:", response.text)
     return response.ok
 
-# === Setup Headless Chrome WebDriver ===
+def safe_click(driver, wait, locator):
+    element = wait.until(EC.element_to_be_clickable(locator))
+    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+    try:
+        element.click()
+    except Exception:
+        driver.execute_script("arguments[0].click();", element)
+    return element
+
+# === Setup Chrome WebDriver ===
 options = Options()
-options.add_argument('--headless')  # Headless mode for CI
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--window-size=1920,1080')
+options.add_argument('--start-maximized')
+# options.add_argument('--headless')  # Avoid headless if interaction issues
+options.add_argument("--disable-gpu")
 
 driver = webdriver.Chrome(options=options)
-driver.implicitly_wait(10)
 
 try:
-    # Step 1: Open the website
+    wait = WebDriverWait(driver, 15)
     driver.get("https://swavlambancard.gov.in/track-your-application")
 
+    # Simulate small mouse movement and scroll to keep page active
+    actions = ActionChains(driver)
+    actions.move_by_offset(1, 1).perform()
+    actions.move_by_offset(-1, -1).perform()
+    driver.execute_script("window.scrollBy(0, 1);")
+    driver.execute_script("window.scrollBy(0, -1);")
+
     # Step 2: Select the "Mobile Number" radio option
-    driver.find_element(By.ID, "cat-mobile").click()
+    safe_click(driver, wait, (By.ID, "cat-mobile"))
 
     # Step 3: Enter the mobile number
-    input_box = driver.find_element(By.CSS_SELECTOR, 'input[formcontrolname="mobile"]')
+    input_box = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[formcontrolname="mobile"]')))
+    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", input_box)
+    input_box.clear()
     input_box.send_keys(MOBILE_NUMBER)
 
     # Step 4: Click the Submit button
-    submit_btn = driver.find_element(By.CSS_SELECTOR, 'input[type="submit"][value="Submit"]')
-    submit_btn.click()
+    safe_click(driver, wait, (By.CSS_SELECTOR, 'input[type="submit"][value="Submit"]'))
 
-    # Step 5: Extract table content
-    time.sleep(3)  # Wait for table to load
-    table_div = driver.find_element(By.CSS_SELECTOR, 'div.trakMyAppTable')
+    # Step 5: Wait for the result table to appear
+    table_div = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div.trakMyAppTable')))
     rows = table_div.find_elements(By.TAG_NAME, "tr")
 
     if not rows:
@@ -63,14 +78,15 @@ try:
                 message_lines.append(line)
         message = "\n".join(message_lines)
 
+    # Print to console
     print(message)
 
-    # Step 6: Send to Telegram
-    if TELEGRAM_TOKEN and CHAT_ID:
-        success = send_telegram_message(TELEGRAM_TOKEN, CHAT_ID, message)
-        print("✅ Message sent to Telegram." if success else "❌ Failed to send Telegram message.")
+    # Step 7: Send to Telegram
+    success = send_telegram_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, message)
+    if success:
+        print("✅ Message sent to Telegram successfully.")
     else:
-        print("⚠️ Telegram credentials not found in environment variables.")
+        print("❌ Failed to send message to Telegram.")
 
 except Exception as e:
     print("❌ Error during scraping or sending message:", e)
