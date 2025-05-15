@@ -1,4 +1,5 @@
 import os
+import signal
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -7,6 +8,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException, WebDriverException
 import requests
+
+print("Script started...")
 
 # === CONFIGURATION: Read from environment variables ===
 MOBILE_NUMBER = os.getenv("MOBILE_NUMBER")
@@ -38,27 +41,43 @@ def safe_click(driver, wait, locator):
         print(f"JS Click successful: {locator}")
     return element
 
+# Timeout handler for driver.get()
+class PageLoadTimeout(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise PageLoadTimeout()
+
 # === Setup Chrome WebDriver with headless mode and logging ===
 options = Options()
-options.add_argument("--headless=new")  # Headless mode
+options.add_argument("--headless")  # Use stable headless flag
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument('--disable-gpu')
 options.add_argument('--window-size=1920,1080')
 
-# Set logging preferences via options
+# Enable verbose logging
+options.add_argument('--enable-logging')
+options.add_argument('--v=1')
+
+# Set logging prefs via options
 options.set_capability('goog:loggingPrefs', {'browser': 'ALL', 'driver': 'ALL'})
 
-# Enable ChromeDriver logs to a file for debugging
 service = Service(log_path="chromedriver.log")
 
 print("Starting WebDriver...")
 driver = webdriver.Chrome(service=service, options=options)
-wait = WebDriverWait(driver, 15)
+wait = WebDriverWait(driver, 30)
 
 try:
-    print("Navigating to the tracking page...")
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(20)  # 20 second timeout for page load
+
+    print("Loading webpage...")
     driver.get("https://swavlambancard.gov.in/track-your-application")
+
+    signal.alarm(0)  # cancel alarm on success
+    print("Page loaded successfully.")
 
     print("Selecting 'Mobile Number' radio button...")
     safe_click(driver, wait, (By.ID, "cat-mobile"))
@@ -99,6 +118,8 @@ try:
     else:
         print("❌ Failed to send message to Telegram.")
 
+except PageLoadTimeout:
+    print("❌ Timeout while loading the webpage.")
 except TimeoutException as e:
     print(f"❌ Timeout error during wait: {e}")
 except WebDriverException as e:
