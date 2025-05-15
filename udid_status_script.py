@@ -1,12 +1,12 @@
+import os
+import time
+import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-import time
-import os
-import requests
 
-# === CONFIGURATION ===
-MOBILE_NUMBER = os.getenv("MOBILE_NUMBER")  # Replace with your actual mobile number
+# === CONFIGURATION FROM ENV ===
+MOBILE_NUMBER = os.getenv("MOBILE_NUMBER")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
@@ -18,21 +18,26 @@ def send_telegram_message(token, chat_id, message):
         "parse_mode": "HTML"
     }
     response = requests.post(url, data=data)
+    if not response.ok:
+        print("Telegram Error:", response.text)
     return response.ok
 
-# === Setup Chrome WebDriver ===
+# === Setup Headless Chrome WebDriver ===
 options = Options()
-options.add_argument('--start-maximized')
+options.add_argument('--headless')  # Headless mode for CI
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
+options.add_argument('--window-size=1920,1080')
+
 driver = webdriver.Chrome(options=options)
+driver.implicitly_wait(10)
 
 try:
     # Step 1: Open the website
     driver.get("https://swavlambancard.gov.in/track-your-application")
-    time.sleep(2)
 
     # Step 2: Select the "Mobile Number" radio option
     driver.find_element(By.ID, "cat-mobile").click()
-    time.sleep(1)
 
     # Step 3: Enter the mobile number
     input_box = driver.find_element(By.CSS_SELECTOR, 'input[formcontrolname="mobile"]')
@@ -42,10 +47,8 @@ try:
     submit_btn = driver.find_element(By.CSS_SELECTOR, 'input[type="submit"][value="Submit"]')
     submit_btn.click()
 
-    # Step 5: Wait for the result table to appear
-    time.sleep(3)
-
-    # Step 6: Extract table content
+    # Step 5: Extract table content
+    time.sleep(3)  # Wait for table to load
     table_div = driver.find_element(By.CSS_SELECTOR, 'div.trakMyAppTable')
     rows = table_div.find_elements(By.TAG_NAME, "tr")
 
@@ -60,19 +63,17 @@ try:
                 message_lines.append(line)
         message = "\n".join(message_lines)
 
-    # Print to console
     print(message)
 
-    # Step 7: Send to Telegram
-    success = send_telegram_message(TELEGRAM_TOKEN, CHAT_ID, message)
-    if success:
-        print("✅ Message sent to Telegram successfully.")
+    # Step 6: Send to Telegram
+    if TELEGRAM_TOKEN and CHAT_ID:
+        success = send_telegram_message(TELEGRAM_TOKEN, CHAT_ID, message)
+        print("✅ Message sent to Telegram." if success else "❌ Failed to send Telegram message.")
     else:
-        print("❌ Failed to send message to Telegram.")
+        print("⚠️ Telegram credentials not found in environment variables.")
 
 except Exception as e:
     print("❌ Error during scraping or sending message:", e)
 
 finally:
-    # Step 8: Close browser
     driver.quit()
