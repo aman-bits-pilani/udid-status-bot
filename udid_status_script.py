@@ -46,14 +46,7 @@ driver = webdriver.Chrome(options=options)
 try:
     wait = WebDriverWait(driver, 15)
     driver.get("https://swavlambancard.gov.in/track-your-application")
-
-    # Simulate minimal mouse movement & scroll to keep page interactive
-    actions = ActionChains(driver)
-    actions.move_by_offset(1, 1).perform()
-    actions.move_by_offset(-1, -1).perform()
-    driver.execute_script("window.scrollBy(0, 1);")
-    driver.execute_script("window.scrollBy(0, -1);")
-
+    
     # Step 2: Select the "Mobile Number" radio option
     safe_click(driver, wait, (By.ID, "cat-mobile"))
 
