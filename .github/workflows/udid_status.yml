@@ -24,8 +24,8 @@ jobs:
 
       - name: Run Selenium script
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
           MOBILE_NUMBER: ${{ secrets.MOBILE_NUMBER }}
         run: |
           python udid_status_script.py
