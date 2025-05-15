@@ -13,7 +13,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
 if not (MOBILE_NUMBER and TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID):
-    raise Exception("Missing required environment variables: MOBILE_NUMBER, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID")
+    raise Exception("Missing required environment variables: MOBILE_NUMBER, TELEGRAM_TOKEN, CHAT_ID")
 
 def send_telegram_message(token, chat_id, message):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
