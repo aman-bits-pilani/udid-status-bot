@@ -46,14 +46,14 @@ options.add_argument("--disable-dev-shm-usage")
 options.add_argument('--disable-gpu')
 options.add_argument('--window-size=1920,1080')
 
+# Set logging preferences via options
+options.set_capability('goog:loggingPrefs', {'browser': 'ALL', 'driver': 'ALL'})
+
 # Enable ChromeDriver logs to a file for debugging
 service = Service(log_path="chromedriver.log")
 
-caps = webdriver.DesiredCapabilities.CHROME.copy()
-caps['goog:loggingPrefs'] = {'browser': 'ALL', 'driver': 'ALL'}
-
 print("Starting WebDriver...")
-driver = webdriver.Chrome(service=service, options=options, desired_capabilities=caps)
+driver = webdriver.Chrome(service=service, options=options)
 wait = WebDriverWait(driver, 15)
 
 try:
