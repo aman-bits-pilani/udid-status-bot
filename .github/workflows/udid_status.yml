@@ -26,4 +26,5 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+          MOBILE_NUMBER: ${{ secrets.MOBILE_NUMBER }}
         run: python ./udid_status_script.py
