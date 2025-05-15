@@ -1,3 +1,4 @@
+import os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -5,12 +6,14 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver import ActionChains
 import requests
-import os
 
-# === CONFIGURATION ===
-MOBILE_NUMBER = os.getenv("MOBILE_NUMBER")  # Replace with your actual mobile number
+# === CONFIGURATION: Read from environment variables ===
+MOBILE_NUMBER = os.getenv("MOBILE_NUMBER")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
+
+if not (MOBILE_NUMBER and TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID):
+    raise Exception("Missing required environment variables: MOBILE_NUMBER, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID")
 
 def send_telegram_message(token, chat_id, message):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -33,11 +36,13 @@ def safe_click(driver, wait, locator):
         driver.execute_script("arguments[0].click();", element)
     return element
 
-# === Setup Chrome WebDriver ===
+# === Setup Chrome WebDriver with headless mode ===
 options = Options()
-options.add_argument('--start-maximized')
-# options.add_argument('--headless')  # Avoid headless if interaction issues
-options.add_argument("--disable-gpu")
+options.add_argument("--headless=new")  # Headless mode
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-dev-shm-usage")
+options.add_argument('--disable-gpu')
+options.add_argument('--window-size=1920,1080')
 
 driver = webdriver.Chrome(options=options)
 
@@ -45,7 +50,7 @@ try:
     wait = WebDriverWait(driver, 15)
     driver.get("https://swavlambancard.gov.in/track-your-application")
 
-    # Simulate small mouse movement and scroll to keep page active
+    # Simulate minimal mouse movement & scroll to keep page interactive
     actions = ActionChains(driver)
     actions.move_by_offset(1, 1).perform()
     actions.move_by_offset(-1, -1).perform()
@@ -79,11 +84,10 @@ try:
                 message_lines.append(line)
         message = "\n".join(message_lines)
 
-    # Print to console
     print(message)
 
     # Step 7: Send to Telegram
-    success = send_telegram_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, message)
+    success = send_telegram_message(TELEGRAM_TOKEN, CHAT_ID, message)
     if success:
         print("✅ Message sent to Telegram successfully.")
     else:
